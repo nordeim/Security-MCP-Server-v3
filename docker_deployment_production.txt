@@ -1,0 +1,12 @@
+# 1. Build production image
+docker build -t mcp-server:2.0.0 .
+
+# 2. Production compose (no overrides)
+docker-compose -f docker-compose.yml up -d
+
+# 3. Monitor
+docker stats mcp-server
+docker logs -f mcp-server
+
+# 4. Health check
+curl http://localhost:8080/health

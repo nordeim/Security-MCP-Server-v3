@@ -1,0 +1,236 @@
+#==============================================================================
+# MCP Network Tools Server - Development Override
+#==============================================================================
+# Purpose: Development-friendly configuration overrides
+#
+# Usage:
+#   docker-compose up -d    # Automatically merges with docker-compose.yml
+#
+# Features:
+#   - Source code hot-reload
+#   - Debug mode enabled
+#   - Relaxed resource limits
+#   - Additional logging
+#   - Development tools available
+#
+# Note: This file is automatically used by docker-compose.
+#       For production, use: docker-compose -f docker-compose.yml up -d
+#
+# Author: MCP Network Tools Team
+# Version: 2.0.0
+#==============================================================================
+
+version: '3.8'
+
+services:
+  
+  #----------------------------------------------------------------------------
+  # MCP Server - Development Overrides
+  #----------------------------------------------------------------------------
+  mcp-server:
+    
+    # Build with development tags
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime  # Can specify different target if needed
+      labels:
+        - "com.mcp.environment=development"
+    
+    # Development environment variables
+    environment:
+      # Enable debug mode
+      - LOG_LEVEL=DEBUG
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      
+      # Development server settings
+      - MCP_SERVER_TRANSPORT=http
+      - MCP_SERVER_HOST=0.0.0.0
+      - MCP_SERVER_PORT=8080
+      
+      # Relaxed security for testing
+      - MCP_SECURITY_ALLOW_INTRUSIVE=true  # DEVELOPMENT ONLY!
+      
+      # Faster circuit breaker recovery for testing
+      - MCP_CIRCUIT_BREAKER_RECOVERY_TIMEOUT=30
+      
+      # More frequent health checks
+      - MCP_HEALTH_CHECK_INTERVAL=15
+      
+      # Enable all metrics
+      - MCP_METRICS_ENABLED=true
+      - MCP_METRICS_PROMETHEUS_ENABLED=true
+    
+    # Mount source code for hot-reload
+    volumes:
+      # Source code (read-write for development)
+      - type: bind
+        source: ./mcp_server
+        target: /app/mcp_server
+      
+      # Tests (for running tests in container)
+      - type: bind
+        source: ./tests
+        target: /app/tests
+      
+      # Configuration (read-write for testing)
+      - type: bind
+        source: ${MCP_CONFIG_DIR:-./config}
+        target: /app/config
+      
+      # Requirements (for dependency changes)
+      - type: bind
+        source: ./requirements.txt
+        target: /app/requirements.txt
+        read_only: true
+      
+      # Persistent data (local directory)
+      - type: bind
+        source: ./data
+        target: /app/data
+      
+      # Logs (local directory for easy access)
+      - type: bind
+        source: ./logs
+        target: /app/logs
+    
+    # Additional port exposures for debugging
+    ports:
+      - "8080:8080"   # HTTP API
+      - "9090:9090"   # Prometheus metrics
+      - "5678:5678"   # Python debugger (debugpy)
+    
+    # Relaxed resource limits for development
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+    
+    # More lenient health check for development
+    healthcheck:
+      test: ["CMD", "/app/docker/healthcheck.sh"]
+      interval: 60s
+      timeout: 15s
+      retries: 5
+      start_period: 30s
+    
+    # Enable all capabilities for debugging (DEVELOPMENT ONLY!)
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+      - SYS_PTRACE  # For debugging
+    
+    # Disable read-only filesystem for development
+    read_only: false
+    
+    # Additional tmpfs mounts
+    tmpfs:
+      - /tmp:rw,exec,size=500m  # Larger, exec allowed for testing
+    
+    # Development-specific labels
+    labels:
+      com.mcp.environment: "development"
+      com.mcp.hot-reload: "enabled"
+      com.mcp.debug: "enabled"
+    
+    # Override command for development with auto-reload
+    # Uncomment to use watchdog for auto-reload:
+    # command: >
+    #   sh -c "pip install watchdog &&
+    #          watchmedo auto-restart
+    #          --directory=/app/mcp_server
+    #          --pattern='*.py'
+    #          --recursive
+    #          -- python -m mcp_server.server"
+    
+    # Standard command (manual restart required)
+    command: ["python", "-m", "mcp_server.server"]
+
+  #----------------------------------------------------------------------------
+  # Optional: Development Database (if needed)
+  #----------------------------------------------------------------------------
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: mcp-postgres-dev
+  #   environment:
+  #     - POSTGRES_DB=mcp_dev
+  #     - POSTGRES_USER=mcp
+  #     - POSTGRES_PASSWORD=mcp_dev_pass
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   networks:
+  #     - mcp-network
+  #   labels:
+  #     com.mcp.environment: "development"
+
+  #----------------------------------------------------------------------------
+  # Optional: Redis Cache (if needed)
+  #----------------------------------------------------------------------------
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: mcp-redis-dev
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - mcp-network
+  #   labels:
+  #     com.mcp.environment: "development"
+
+#------------------------------------------------------------------------------
+# Development Volumes
+#------------------------------------------------------------------------------
+# volumes:
+#   postgres-data:
+#     name: mcp-postgres-dev-data
+
+#==============================================================================
+# Development Notes
+#==============================================================================
+#
+# Hot Reload:
+#   - Source code is mounted as volume
+#   - Changes reflect immediately (may need manual restart)
+#   - Use watchdog for automatic restart on file changes
+#
+# Debugging:
+#   - Port 5678 exposed for debugpy (Python debugger)
+#   - Attach with VS Code or PyCharm
+#   - Set breakpoints in mounted source code
+#
+# Testing:
+#   - Run tests inside container:
+#     docker-compose exec mcp-server pytest
+#   - Tests directory is mounted
+#
+# Database Access (if enabled):
+#   - PostgreSQL: localhost:5432
+#   - Redis: localhost:6379
+#   - Credentials in environment section
+#
+# Logs:
+#   - Available at ./logs/ directory
+#   - Real-time: docker-compose logs -f mcp-server
+#   - DEBUG level enabled
+#
+# Security Warning:
+#   - INTRUSIVE mode enabled for testing
+#   - DO NOT use this configuration in production!
+#   - Additional capabilities enabled
+#
+# Resource Usage:
+#   - Higher limits for development
+#   - Monitor with: docker stats
+#
+# Cleanup:
+#   - Stop: docker-compose down
+#   - Remove volumes: docker-compose down -v
+#   - Clean rebuild: docker-compose build --no-cache
+#
+#==============================================================================

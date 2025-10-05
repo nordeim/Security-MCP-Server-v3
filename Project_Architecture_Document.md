@@ -1,745 +1,231 @@
-# Security MCP Server - Project Architecture Document
+# Project Architecture Document (PAD)
 
-## Table of Contents
-1. [Executive Summary](#executive-summary)
-2. [Architecture Overview](#architecture-overview)
-3. [Component Deep Dive](#component-deep-dive)
-4. [Codebase Catalog](#codebase-catalog)
-5. [Application Logic Flow](#application-logic-flow)
-6. [Security Architecture](#security-architecture)
-7. [Deployment Architecture](#deployment-architecture)
-8. [Development Guidelines](#development-guidelines)
-9. [Contributing Guidelines](#contributing-guidelines)
-10. [Troubleshooting Guide](#troubleshooting-guide)
+## 1. Introduction
 
----
+This document provides a comprehensive architectural overview of the Security Model Context Protocol (MCP) Server. It is intended to be the single source of truth for developers, providing a deep dive into the system's components, logic flows, and core concepts. The primary purpose of this project is to provide a secure, monitored, and resilient intermediary between AI agents and powerful command-line network security tools, preventing misuse and ensuring safe operation.
 
-## Executive Summary
+## 2. System Architecture
 
-The Security MCP Server is an enterprise-grade security tool orchestration platform that provides a unified, production-ready framework for secure execution of security tools with comprehensive reliability, monitoring, and safety features. The system implements the Model Context Protocol (MCP) to enable seamless integration with AI coding assistants while maintaining strict security controls and enterprise-grade resilience patterns.
-
-### Key Objectives
-- **Unified Security Tool Orchestration**: Single interface for multiple security tools
-- **Enterprise-Grade Reliability**: Circuit breakers, health monitoring, and graceful degradation
-- **Comprehensive Security**: RFC1918 enforcement, input validation, and sandboxed execution
-- **Full Observability**: Prometheus metrics, Grafana dashboards, and structured logging
-- **AI Assistant Integration**: Native MCP support for LLM tool calling
-
----
-
-## Architecture Overview
-
-### High-Level System Architecture
+The application is designed with a modular, service-oriented architecture. Each component is responsible for a specific aspect of the system's functionality, promoting separation of concerns and maintainability.
 
 ```mermaid
-graph TB
-    subgraph "Client Layer"
-        CLI[CLI Client]
-        API[REST API Client]
-        LLM[AI Assistant/LM]
+graph TD
+    subgraph "External World"
+        A[AI Agent / User]
     end
-    
-    subgraph "Transport Layer"
-        HTTP[HTTP Transport]
-        STDIO[STDIO Transport]
+
+    subgraph "MCP Server Application"
+        B[MCP Server Core - server.py]
+        C[Tool Registry]
+        D[Health Manager - health.py]
+        E[Metrics Manager - metrics.py]
+        F[Config Manager - config.py]
     end
-    
-    subgraph "MCP Server Core"
-        SERVER[EnhancedMCPServer]
-        REGISTRY[Tool Registry]
-        CB[Circuit Breaker]
-        HEALTH[Health Monitor]
-        METRICS[Metrics Manager]
+
+    subgraph "Tool Execution Layer"
+        G[Tool Execution Pipeline]
+        H[Circuit Breaker - circuit_breaker.py]
+        I[Secure Base Tool - base_tool.py]
     end
-    
-    subgraph "Security Tools"
-        NMAP[NmapTool]
-        MASS[MasscanTool]
-        GOB[GobusterTool]
-        HYDRA[HydraTool]
-        SQL[SqlmapTool]
+
+    subgraph "Individual Tools - tools/"
+        J[NmapTool]
+        K[MasscanTool]
+        L[GobusterTool]
+        M[...]
     end
-    
-    subgraph "Observability Stack"
-        PROM[Prometheus]
-        GRAF[Grafana]
-        LOGS[Structured Logging]
+
+    subgraph "Observability"
+        N[Prometheus]
+        O[Grafana]
     end
-    
-    CLI --> HTTP
-    API --> HTTP
-    LLM --> STDIO
-    
-    HTTP --> SERVER
-    STDIO --> SERVER
-    
-    SERVER --> REGISTRY
-    SERVER --> CB
-    SERVER --> HEALTH
-    SERVER --> METRICS
-    
-    REGISTRY --> NMAP
-    REGISTRY --> MASS
-    REGISTRY --> GOB
-    REGISTRY --> HYDRA
-    REGISTRY --> SQL
-    
-    CB --> NMAP
-    CB --> MASS
-    CB --> GOB
-    CB --> HYDRA
-    CB --> SQL
-    
-    METRICS --> PROM
-    HEALTH --> PROM
-    SERVER --> LOGS
-    
-    PROM --> GRAF
+
+    A -- MCP Protocol (HTTP/stdio) --> B
+    B -- Manages --> C
+    B -- Integrates with --> D
+    B -- Integrates with --> E
+    B -- Loads from --> F
+
+    B -- Dispatches Request --> G
+    G -- Wraps --> H
+    H -- Wraps --> I
+    I -- Is extended by --> J
+    I -- Is extended by --> K
+    I -- Is extended by --> L
+    I -- Is extended by --> M
+
+    E -- Exposes Metrics --> N
+    N -- Provides Data to --> O
+    D -- Provides Status to --> B
 ```
 
-### Architectural Principles
+## 3. File Hierarchy & Key Components
 
-1. **Defense in Depth**: Multiple layers of security controls
-2. **Fail-Safe Operation**: Graceful degradation when components fail
-3. **Observable by Design**: Comprehensive monitoring and logging
-4. **Async-First**: Non-blocking operations throughout the stack
-5. **Configuration-Driven**: Flexible behavior through configuration
+### File Hierarchy
 
----
+```
+.
+├── Dockerfile
+├── docker-compose.yml
+├── mcp.json
+├── mcp_client.py
+├── config/
+│   └── prometheus.yml
+├── docker/
+│   ├── alerts.yml
+│   ├── entrypoint.sh
+│   └── healthcheck.sh
+├── mcp_server/
+│   ├── server.py
+│   ├── base_tool.py
+│   ├── circuit_breaker.py
+│   ├── config.py
+│   ├── health.py
+│   ├── metrics.py
+│   └── tools/
+│       ├── nmap_tool.py
+│       ├── masscan_tool.py
+│       ├── gobuster_tool.py
+│       ├── hydra_tool.py
+│       └── sqlmap_tool.py
+├── scripts/
+│   └── mcp_server_launcher.sh
+└── tests/
+    ├── conftest.py
+    ├── test_nmap_tool.py
+    └── ...
+```
 
-## Component Deep Dive
+### Key Component Descriptions
 
-### Transport Layer
+| File / Module                  | Responsibility                                                                                                                                                                                                                         |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`mcp_server/server.py`**     | The application's core. It initializes the server, discovers and registers tools, handles incoming requests (for both HTTP and stdio transports), and integrates with the health and metrics managers.                               |
+| **`mcp_server/base_tool.py`**  | The security foundation. This abstract base class is inherited by all tools. It enforces the entire security model, including input validation, command sanitization, resource limits, concurrency control, and secure subprocess execution. |
+| **`mcp_server/tools/`**        | The extensible tool directory. Each file defines a specific tool (e.g., `NmapTool`) by subclassing `MCPBaseTool` and defining a whitelist of allowed flags and tool-specific validation logic.                               |
+| **`mcp_server/config.py`**     | A robust, multi-source configuration manager. It loads settings from defaults, YAML files, and environment variables, performs validation and sanitization, and supports hot-reloading.                                               |
+| **`mcp_server/health.py`**     | The health monitoring engine. It runs periodic, priority-based health checks (e.g., for system resources, tool availability) and aggregates them into an overall system status (`HEALTHY`, `DEGRADED`, `UNHEALTHY`).                 |
+| **`mcp_server/metrics.py`**    | The observability and metrics collection system. It tracks detailed statistics for each tool (latency, success rates) and exposes them in a Prometheus-compatible format.                                                              |
+| **`mcp_server/circuit_breaker.py`** | A resilience component that wraps tool executions. It monitors for repeated failures and "opens the circuit" to prevent a failing tool from impacting the entire system, enabling graceful degradation.                               |
+| **`Dockerfile`**               | A multi-stage Dockerfile that builds a minimal, secure, non-root container image for the application, including all necessary system dependencies (like `nmap`).                                                                       |
+| **`docker-compose.yml`**       | Defines a full, production-like environment with the MCP server and a complete observability stack (Prometheus, Grafana, etc.), enabling comprehensive monitoring out-of-the-box.                                                      |
 
-The transport layer provides dual protocol support for different use cases:
+## 4. Execution Flow Diagrams
 
-- **HTTP Transport**: FastAPI-based REST API for service integration
-- **STDIO Transport**: Native MCP protocol for AI assistant integration
+### User Interaction Flow (Sequence Diagram)
 
-Both transports implement the same core functionality with protocol-specific optimizations.
-
-### Server Core
-
-The `EnhancedMCPServer` is the central orchestrator that:
-- Manages transport lifecycle
-- Coordinates tool execution
-- Handles health monitoring
-- Collects and exposes metrics
-- Implements graceful shutdown
-
-### Tool Registry
-
-The `ToolRegistry` provides:
-- Dynamic tool discovery and registration
-- Enable/disable functionality
-- Tool metadata management
-- Configuration-based filtering
-
-### Circuit Breaker
-
-The `CircuitBreaker` implements:
-- Failure detection and isolation
-- Adaptive recovery timeouts
-- State management (CLOSED, OPEN, HALF_OPEN)
-- Prometheus metrics integration
-
-### Health Monitor
-
-The `HealthCheckManager` provides:
-- Priority-based health checks
-- System resource monitoring
-- Tool availability verification
-- Dependency health checking
-
-### Metrics Manager
-
-The `MetricsManager` handles:
-- Tool execution metrics
-- System-wide statistics
-- Prometheus integration
-- Memory-efficient storage
-
----
-
-## Codebase Catalog
-
-### Core Infrastructure Files
-
-#### `server.py`
-**Purpose**: Main server implementation and orchestration
-**Key Classes**:
-- `EnhancedMCPServer`: Central server orchestrator
-- `ToolRegistry`: Tool management and discovery
-**Responsibilities**:
-- Transport management (HTTP/stdio)
-- Tool registration and lifecycle
-- Health monitoring coordination
-- Metrics collection integration
-- Graceful shutdown handling
-
-#### `base_tool.py`
-**Purpose**: Base class for all security tools with enterprise features
-**Key Classes**:
-- `MCPBaseTool`: Abstract base for all tools
-- `ToolInput`: Input validation model
-- `ToolOutput`: Output formatting model
-**Responsibilities**:
-- Common tool functionality
-- Input validation and sanitization
-- Resource limit enforcement
-- Subprocess management
-- Error handling and context
-
-#### `config.py`
-**Purpose**: Configuration management with validation and hot-reload
-**Key Classes**:
-- `MCPConfig`: Main configuration class
-- `SecurityConfig`: Security-specific configuration
-- `ServerConfig`: Server configuration
-**Responsibilities**:
-- Layered configuration (defaults → file → environment)
-- Configuration validation
-- Hot-reload capability
-- Sensitive data redaction
-
-### Resilience and Monitoring Files
-
-#### `circuit_breaker.py`
-**Purpose**: Circuit breaker implementation for resilience
-**Key Classes**:
-- `CircuitBreaker`: Main circuit breaker implementation
-- `CircuitBreakerState`: State enumeration
-- `CircuitBreakerStats`: Statistics tracking
-**Responsibilities**:
-- Failure detection and isolation
-- Adaptive recovery timeouts
-- State management and transitions
-- Prometheus metrics integration
-
-#### `health.py`
-**Purpose**: Health monitoring system with priority-based checks
-**Key Classes**:
-- `HealthCheckManager`: Health check orchestration
-- `SystemResourceHealthCheck`: System resource monitoring
-- `ToolAvailabilityHealthCheck`: Tool availability verification
-**Responsibilities**:
-- Health check execution and coordination
-- Priority-based status calculation
-- System resource monitoring
-- Dependency health verification
-
-#### `metrics.py`
-**Purpose**: Metrics collection and Prometheus integration
-**Key Classes**:
-- `MetricsManager`: Metrics orchestration
-- `ToolMetrics`: Per-tool metrics collection
-- `SystemMetrics`: System-wide metrics
-**Responsibilities**:
-- Tool execution metrics
-- Prometheus integration
-- Memory-efficient storage
-- Percentile calculations
-
-### Security Tool Implementation Files
-
-#### `nmap_tool.py`
-**Purpose**: Network discovery and port scanning tool
-**Key Features**:
-- Network range validation and limits
-- Script category filtering with policy enforcement
-- Performance optimizations with safe defaults
-- Port specification safety
-**Security Controls**:
-- RFC1918 target enforcement
-- Script policy enforcement
-- Network size limits
-- Flag allowlisting
-
-#### `masscan_tool.py`
-**Purpose**: High-speed port scanning with rate limiting
-**Key Features**:
-- Rate limiting enforcement
-- Large network range support
-- Interface validation
-- Banner grabbing control
-**Security Controls**:
-- Configurable rate limits
-- Network size validation
-- Private network enforcement
-- Banner grabbing policy
-
-#### `gobuster_tool.py`
-**Purpose**: Content and DNS discovery with mode-specific validation
-**Key Features**:
-- Mode-specific validation (dir/dns/vhost)
-- Wordlist size validation
-- Thread count optimization
-- URL validation
-**Security Controls**:
-- Private network enforcement
-- Wordlist path validation
-- Thread count limits
-- Extension filtering
-
-#### `hydra_tool.py`
-**Purpose**: Authentication testing with payload sanitization
-**Key Features**:
-- Service-specific validation
-- Password list size restrictions
-- Form payload handling
-- Thread count limitations
-**Security Controls**:
-- Private network enforcement
-- Payload token sanitization
-- Password file validation
-- Thread count limits
-
-#### `sqlmap_tool.py`
-**Purpose**: SQL injection detection with risk clamping
-**Key Features**:
-- URL validation with authorization checks
-- Risk and test level restrictions
-- Payload token handling
-- Batch mode enforcement
-**Security Controls**:
-- URL target validation
-- Risk level clamping
-- Test level restrictions
-- Batch mode enforcement
-
----
-
-## Application Logic Flow
-
-### Tool Execution Flow
+This diagram shows the sequence of events for a typical tool execution request from an AI agent.
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant Transport
-    participant Server
-    participant Registry
-    participant CircuitBreaker
-    participant Tool
-    participant Health
-    participant Metrics
-    
-    Client->>Transport: Execute Tool Request
-    Transport->>Server: Forward Request
-    Server->>Registry: Lookup Tool
-    Registry-->>Server: Tool Instance
-    
-    Server->>CircuitBreaker: Check State
-    alt Circuit Breaker Open
-        CircuitBreaker-->>Server: CircuitBreakerOpenError
-        Server-->>Transport: Error Response
-        Transport-->>Client: Error Response
-    else Circuit Breaker Closed/Half-Open
-        CircuitBreaker-->>Server: Proceed
-        Server->>Tool: Validate Input
-        Tool-->>Server: Validated Input
-        
-        Server->>Tool: Execute with Timeout
-        Tool->>Tool: Execute Subprocess
-        Tool-->>Server: Execution Result
-        
-        Server->>CircuitBreaker: Record Result
-        Server->>Metrics: Record Metrics
-        Server->>Health: Update Health Status
-        
-        Server-->>Transport: Success Response
-        Transport-->>Client: Success Response
-    end
-```
-
-### Health Check Flow
-
-```mermaid
-sequenceDiagram
-    participant Monitor as Health Monitor
-    participant SystemCheck as System Resource Check
-    participant ToolCheck as Tool Availability Check
-    participant ProcessCheck as Process Health Check
-    participant DepCheck as Dependency Check
+    participant Agent as AI Agent
+    participant Server as MCP Server Core
     participant Registry as Tool Registry
-    
-    Monitor->>Monitor: Start Monitoring Loop
-    Monitor->>SystemCheck: Execute Check
-    SystemCheck-->>Monitor: System Resource Status
-    
-    Monitor->>ToolCheck: Execute Check
-    ToolCheck->>Registry: Get Enabled Tools
-    Registry-->>ToolCheck: Tool List
-    ToolCheck->>ToolCheck: Verify Tool Availability
-    ToolCheck-->>Monitor: Tool Availability Status
-    
-    Monitor->>ProcessCheck: Execute Check
-    ProcessCheck-->>Monitor: Process Health Status
-    
-    Monitor->>DepCheck: Execute Check
-    DepCheck-->>Monitor: Dependency Status
-    
-    Monitor->>Monitor: Calculate Overall Status
-    Monitor->>Monitor: Update Health State
+    participant Breaker as Circuit Breaker
+    participant Tool as Specific Tool (e.g., NmapTool)
+
+    Agent->>+Server: Execute Tool Request (tool_name, target, args)
+    Server->>Registry: Get Tool(tool_name)
+    Registry-->>-Server: Return Tool Instance
+    Server->>+Breaker: call(tool.run, ... )
+    Breaker->>Breaker: Check State (e.g., CLOSED)
+    Breaker->>+Tool: run(ToolInput)
+    Tool->>Tool: Validate Input & Sanitize Args
+    Tool->>Tool: Execute Hardened Subprocess
+    Tool-->>-Breaker: Return ToolOutput
+    Breaker->>Breaker: Record Success/Failure
+    Breaker-->>-Server: Return Result
+    Server-->>Agent: Formatted Response
 ```
 
-### Error Handling Flow
+### Application Logic Flow (Flowchart)
+
+This diagram details the internal logic of the `MCPBaseTool.run()` method, which is the heart of the security and execution model.
 
 ```mermaid
-flowchart TD
-    Start([Tool Execution Start]) --> Validate{Input Validation}
-    Validate -->|Invalid| ValidationError[Validation Error]
-    Validate -->|Valid| CircuitCheck{Circuit Breaker State}
-    
-    CircuitCheck -->|Open| CircuitError[Circuit Breaker Open Error]
-    CircuitCheck -->|Closed/Half-Open| Execute[Execute Tool]
-    
-    Execute --> Timeout{Timeout?}
-    Timeout -->|Yes| TimeoutError[Timeout Error]
-    Timeout -->|No| Success{Success?}
-    
-    Success -->|No| ExecutionError[Execution Error]
-    Success -->|Yes| RecordSuccess[Record Success Metrics]
-    
-    ValidationError --> ErrorContext[Create Error Context]
-    CircuitError --> ErrorContext
-    TimeoutError --> ErrorContext
-    ExecutionError --> ErrorContext
-    
-    ErrorContext --> ErrorResponse[Error Response]
-    RecordSuccess --> SuccessResponse[Success Response]
-```
+graph TD
+    A[Start: tool.run(ToolInput)] --> B{Check Circuit Breaker State};
+    B -- Open --> C[Return Error: Circuit Open];
+    B -- Closed/Half-Open --> D{Acquire Concurrency Semaphore};
+    D --> E[Validate Input];
+    E -- Invalid --> F[Return Validation Error];
+    E -- Valid --> G[Parse & Validate Arguments];
+    G -- Invalid --> H[Return Argument Error];
+    G -- Valid --> I[Optimize Arguments];
+    I --> J[Resolve Command Path];
+    J -- Not Found --> K[Return Not Found Error];
+    J -- Found --> L[Execute Hardened Subprocess with Resource Limits];
+    L --> M{Execution Timed Out?};
+    M -- Yes --> N[Return Timeout Error];
+    M -- No --> O[Get stdout, stderr, returncode];
+    O --> P[Record Metrics (Success/Failure)];
+    P --> Q[Release Concurrency Semaphore];
+    Q --> R[Return ToolOutput];
 
----
-
-## Security Architecture
-
-### Defense in Depth Model
-
-```mermaid
-graph TB
-    subgraph "Network Security"
-        RFC1918[RFC1918 Enforcement]
-        PRIVATE[Private Network Only]
+    subgraph "Error Path"
+        C --> Q;
+        F --> Q;
+        H --> Q;
+        K --> Q;
+        N --> P;
     end
-    
-    subgraph "Input Security"
-        VALIDATE[Input Validation]
-        SANITIZE[Input Sanitization]
-        LENGTH[Length Limits]
-    end
-    
-    subgraph "Execution Security"
-        SANDBOX[Sandboxed Execution]
-        RESOURCE[Resource Limits]
-        TIMEOUT[Timeout Controls]
-    end
-    
-    subgraph "Monitoring Security"
-        AUDIT[Audit Logging]
-        METRICS[Security Metrics]
-        HEALTH[Health Monitoring]
-    end
-    
-    RFC1918 --> VALIDATE
-    PRIVATE --> SANITIZE
-    VALIDATE --> SANDBOX
-    SANITIZE --> RESOURCE
-    LENGTH --> TIMEOUT
-    SANDBOX --> AUDIT
-    RESOURCE --> METRICS
-    TIMEOUT --> HEALTH
 ```
 
-### Security Controls Implementation
-
-1. **Network Isolation**
-   - RFC1918 IP address enforcement
-   - .lab.internal hostname validation
-   - CIDR range size limits
-
-2. **Input Validation**
-   - Regex-based metacharacter filtering
-   - Argument length limits
-   - Flag allowlisting
-
-3. **Execution Controls**
-   - Subprocess resource limits
-   - Execution timeouts
-   - Process group isolation
-
-4. **Monitoring & Auditing**
-   - Complete execution audit trail
-   - Security event logging
-   - Metrics for security monitoring
-
----
-
-## Deployment Architecture
-
-### Container-Based Deployment
-
-```mermaid
-graph TB
-    subgraph "Docker Compose Stack"
-        subgraph "Application Layer"
-            MCP[MCP Server Container]
-        end
-        
-        subgraph "Observability Layer"
-            PROM[Prometheus Container]
-            GRAF[Grafana Container]
-            NODE[Node Exporter]
-            CADVISOR[cAdvisor]
-        end
-        
-        subgraph "Network Layer"
-            MGMT[Management Network]
-            MONITOR[Monitoring Network]
-        end
-    end
-    
-    subgraph "External Systems"
-        CLIENTS[Client Applications]
-        AI[AI Assistants]
-    end
-    
-    CLIENTS --> MCP
-    AI --> MCP
-    
-    MCP --> PROM
-    PROM --> GRAF
-    
-    NODE --> PROM
-    CADVISOR --> PROM
-    
-    MCP -.-> MGMT
-    PROM -.-> MONITOR
-    GRAF -.-> MONITOR
-```
-
-### Deployment Components
-
-1. **MCP Server Container**
-   - Multi-stage build with security tools
-   - Non-root user execution
-   - Health check endpoint
-   - Graceful shutdown handling
-
-2. **Observability Stack**
-   - Prometheus for metrics collection
-   - Grafana for visualization
-   - Node Exporter for system metrics
-   - cAdvisor for container metrics
-
-3. **Network Configuration**
-   - Segregated networks for management and monitoring
-   - Port exposure control
-   - Inter-container communication
-
----
-
-## Development Guidelines
-
-### Coding Standards
-
-1. **Python Standards**
-   - Follow PEP 8 style guidelines
-   - Use type hints for all function signatures
-   - Implement comprehensive docstrings
-   - Use async/await for I/O operations
-
-2. **Error Handling**
-   - Use specific exception types
-   - Provide context with error messages
-   - Implement proper logging
-   - Include recovery suggestions
-
-3. **Security Practices**
-   - Validate all inputs
-   - Use allowlists over blocklists
-   - Implement principle of least privilege
-   - Sanitize all outputs
-
-### Testing Guidelines
-
-1. **Unit Testing**
-   - Test all public methods
-   - Mock external dependencies
-   - Test error conditions
-   - Achieve >80% code coverage
-
-2. **Integration Testing**
-   - Test tool execution end-to-end
-   - Verify API responses
-   - Test circuit breaker behavior
-   - Validate health checks
-
-3. **Performance Testing**
-   - Benchmark tool execution
-   - Test concurrent operations
-   - Validate resource limits
-   - Monitor memory usage
-
----
-
-## Contributing Guidelines
-
-### Development Workflow
-
-1. **Setup Development Environment**
-   ```bash
-   git clone https://github.com/nordeim/Security-MCP-Server.git
-   cd Security-MCP-Server
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements-dev.txt
-   pre-commit install
-   ```
-
-2. **Create Feature Branch**
-   ```bash
-   git checkout -b feature/amazing-feature
-   ```
-
-3. **Make Changes**
-   - Follow coding standards
-   - Add tests for new functionality
-   - Update documentation
-   - Ensure all tests pass
-
-4. **Submit Pull Request**
-   - Provide clear description
-   - Link to relevant issues
-   - Request code review
-   - Address feedback
-
-### Code Review Process
-
-1. **Automated Checks**
-   - Code style validation
-   - Test suite execution
-   - Security scanning
-   - Documentation build
-
-2. **Manual Review**
-   - Architecture compliance
-   - Security review
-   - Performance impact
-   - Documentation accuracy
-
----
-
-## Troubleshooting Guide
-
-### Common Issues and Solutions
-
-#### Tool Execution Failures
-
-**Symptoms**: Tools return error codes or timeout
-**Causes**: 
-- Tool not installed or not in PATH
-- Insufficient permissions
-- Resource limits exceeded
-- Network connectivity issues
-
-**Solutions**:
-```bash
-# Check tool availability
-which nmap
-which masscan
-
-# Verify permissions
-ls -la /usr/bin/nmap
-
-# Check resource limits
-ulimit -a
-
-# Test network connectivity
-ping 192.168.1.1
-```
-
-#### Circuit Breaker Issues
-
-**Symptoms**: Requests rejected with "Circuit breaker open" errors
-**Causes**:
-- Repeated tool failures
-- Network connectivity issues
-- Resource exhaustion
-
-**Solutions**:
-```bash
-# Check circuit breaker status
-curl http://localhost:8080/health
-
-# Force reset circuit breaker
-curl -X POST http://localhost:8080/tools/NmapTool/reset
-
-# Monitor metrics
-curl http://localhost:8080/metrics
-```
-
-#### Health Check Failures
-
-**Symptoms**: Health endpoint returns degraded or unhealthy status
-**Causes**:
-- High resource utilization
-- Tool availability issues
-- Dependency failures
-
-**Solutions**:
-```bash
-# Check detailed health status
-curl http://localhost:8080/health | jq .
-
-# Monitor system resources
-docker stats
-
-# Check tool availability
-docker exec mcp-server which nmap
-```
-
-#### Performance Issues
-
-**Symptoms**: Slow response times or timeouts
-**Causes**:
-- High system load
-- Insufficient resources
-- Network latency
-
-**Solutions**:
-```bash
-# Monitor performance
-curl http://localhost:8080/metrics | grep mcp_tool_execution_seconds
-
-# Check resource usage
-docker stats mcp-server
-
-# Optimize configuration
-export MCP_DEFAULT_CONCURRENCY=4
-export MCP_DEFAULT_TIMEOUT_SEC=600
-```
-
-### Debug Mode
-
-Enable debug logging for detailed troubleshooting:
-```bash
-export LOG_LEVEL=DEBUG
-python -m mcp_server.server
-```
-
-### Log Analysis
-
-Common log patterns to monitor:
-- `tool.error`: Tool execution failures
-- `circuit_breaker.open`: Circuit breaker activations
-- `health_check.failed`: Health check failures
-- `metrics.record_failed`: Metrics collection issues
-
----
-
-This Project Architecture Document provides a comprehensive overview of the Security MCP Server architecture, components, and operational guidelines. The document serves as the definitive source of truth for developers and contributors, ensuring consistent understanding and implementation of the system architecture.
-
-For questions or contributions to this document, please refer to the Contributing Guidelines section or open an issue in the project repository.
-
-https://chat.z.ai/s/11087f13-7577-4999-b364-6bf44990c409
+## 5. Core Concepts Deep Dive
+
+### Security Model
+
+The server's security model is based on the principle of **defense in depth**.
+
+1.  **Network Restriction:** All tools, via `MCPBaseTool`, validate that the target is a private RFC1918 address or a `.lab.internal` hostname. Public IP scans are impossible.
+2.  **Strict Input Validation:** The `ToolInput` Pydantic model immediately rejects any input containing shell metacharacters like `;`, `|`, `&`, `$`, `>`, `<`, preventing command injection at the earliest stage.
+3.  **Whitelist-Based Flag Control:** Each tool defines an `allowed_flags` list. Only flags present in this list are permitted. Any other flag or non-flag argument is rejected. This is the primary defense against arbitrary command execution.
+4.  **Policy-Gated Operations:** Potentially dangerous operations are disabled by default and must be explicitly enabled via the central configuration (`allow_intrusive: true`). This includes:
+    -   The `-A` (aggressive scan) flag in Nmap.
+    -   Intrusive or vulnerability-scanning Nmap scripts.
+    -   All `gobuster` operations (as it is a brute-forcing tool).
+    -   High-rate scans (`>1000 pps`) in `masscan`.
+5.  **Hardened Execution Environment:** The `_spawn` method in `MCPBaseTool` executes commands with a minimal, sanitized environment, sets resource limits (CPU, memory) to prevent denial-of-service, and runs as a non-root user inside the container.
+
+### Observability (Health & Metrics)
+
+The server is designed for high observability in production environments.
+
+-   **Health Checks (`/health`):** The `HealthCheckManager` runs periodic checks on critical system components. The overall status is determined by a priority system: a `CRITICAL` failure (e.g., high CPU) marks the service as `UNHEALTHY`, while an `IMPORTANT` failure (e.g., a tool's circuit breaker is open) marks it as `DEGRADED`.
+-   **Metrics (`/metrics`):** The `MetricsManager` collects detailed performance data for every tool execution. It integrates with `Prometheus` to expose key metrics, including:
+    -   `mcp_tool_execution_total`: A counter for total executions, labeled by tool and status (success/failure).
+    -   `mcp_tool_execution_seconds`: A histogram of tool execution latency.
+    -   `mcp_tool_active`: A gauge showing the number of in-flight requests per tool.
+    -   `circuit_breaker_state`: The current state of each tool's circuit breaker.
+
+### Configuration
+
+Configuration is managed via a multi-source system with a clear priority:
+**Environment Variables > Configuration File (`config.yaml`) > Default Values**
+
+This allows for flexible configuration in different environments. For example, a developer can use a `config.yaml` for local setup, while a production deployment in Docker can override specific settings with environment variables for better security and compliance with 12-factor app principles.
+
+### Extensibility: Adding a New Tool
+
+Adding a new tool is a straightforward and safe process:
+
+1.  **Create a New File:** Create a new Python file in the `mcp_server/tools/` directory (e.g., `mytool_tool.py`).
+2.  **Subclass `MCPBaseTool`:** Create a class that inherits from `MCPBaseTool`.
+    ```python
+    from mcp_server.base_tool import MCPBaseTool
+
+    class MyTool(MCPBaseTool):
+        # ...
+    ```
+3.  **Define `command_name`:** Set the command that will be executed.
+    ```python
+    command_name = "mytool"
+    ```
+4.  **Define `allowed_flags`:** Create a whitelist of all the safe flags this tool can use. This is the most critical step for security.
+    ```python
+    allowed_flags = ["--version", "-h", "--help", "-o", "--output"]
+    _FLAGS_REQUIRE_VALUE = {"-o", "--output"} # Specify flags that need an argument
+    ```
+5.  **Add Custom Validation (Optional):** If the tool has specific validation needs beyond the base class, override the `_execute_tool` method to add them.
+
+The server's tool discovery mechanism will automatically find, register, and apply all the security, resilience, and observability features of the base class to the new tool upon restart.

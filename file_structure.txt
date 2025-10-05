@@ -1,0 +1,25 @@
+mcp-network-tools/
+├── mcp.json                          # MCP configuration
+├── .env.docker                       # Environment template
+├── .dockerignore                     # Build optimization
+├── Dockerfile                        # Container image
+├── docker-compose.yml                # Production orchestration
+├── docker-compose.override.yml       # Development overrides
+├── scripts/
+│   └── mcp_server_launcher.sh       # Launcher script
+├── docker/
+│   ├── entrypoint.sh                # Container init
+│   └── healthcheck.sh               # Health checks
+├── mcp_server/                       # Application code
+│   ├── __init__.py
+│   ├── server.py
+│   ├── base_tool.py
+│   ├── config.py
+│   ├── health.py
+│   ├── metrics.py
+│   ├── circuit_breaker.py
+│   └── tools/
+│       └── nmap_tool.py
+├── config/                           # Configuration files
+├── data/                             # Persistent data
+└── logs/                             # Application logs

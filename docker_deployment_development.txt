@@ -1,0 +1,14 @@
+# 1. Create environment file
+cp .env.docker .env
+
+# 2. Start with development overrides
+docker-compose up -d
+
+# 3. View logs
+docker-compose logs -f mcp-server
+
+# 4. Check health
+docker-compose exec mcp-server /app/docker/healthcheck.sh
+
+# 5. Stop
+docker-compose down

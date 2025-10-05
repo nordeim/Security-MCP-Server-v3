@@ -1,0 +1,17 @@
+# Make executable
+chmod +x scripts/mcp_server_launcher.sh
+
+# Validate installation
+./scripts/mcp_server_launcher.sh validate
+
+# Start server
+./scripts/mcp_server_launcher.sh start
+
+# Check status
+./scripts/mcp_server_launcher.sh status
+
+# View logs
+./scripts/mcp_server_launcher.sh logs
+
+# Stop server
+./scripts/mcp_server_launcher.sh stop
