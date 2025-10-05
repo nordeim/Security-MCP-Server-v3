@@ -115,7 +115,7 @@ async def test_hello():
 asyncio.run(test_hello())
 ```
 
-## Tool Anatomy
+Tool Anatomy
 Required Attributes
 
 ```python
@@ -181,7 +181,7 @@ class MyTool(MCPBaseTool):
         return self._sanitize_tokens(tokens)
 ```
 
-## Development Workflow
+Development Workflow
 Step 1: Define Tool Requirements
 Planning Checklist:
 
@@ -196,7 +196,7 @@ Planning Checklist:
 Step 2: Create Tool File
 Naming Convention:
 
-```text
+```
 mcp_server/tools/{command}_tool.py
 ```
 
@@ -254,7 +254,7 @@ class {ToolName}(MCPBaseTool):
 Step 3: Implement Custom Logic (if needed)
 Decision Tree:
 
-```text
+```
 Do you need custom validation beyond base class?
 ├─ YES → Override _execute_tool()
 └─ NO  → Use base class as-is
@@ -274,9 +274,9 @@ Do you have configuration settings?
 
 Step 4: Test Locally
 
-(…the rest of the guide continues verbatim with all code examples, patterns, testing guidance, configuration integration, best practices, common pitfalls, and reference examples as originally embedd[...]
+(…the rest of the guide continues verbatim with all code examples, patterns, testing guidance, configuration integration, best practices, common pitfalls, and reference examples as originally embedded in the document…)
 
-## Reference Examples
+Reference Examples
 Example 1: Simple Tool (Ping)
 
 ```python
