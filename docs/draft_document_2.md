@@ -1,7 +1,3 @@
-now create the first document - the Architecture Design Document.
-
-Markdown
-
 # MCP Server Architecture Design Document
 
 **Version:** 2.0  
