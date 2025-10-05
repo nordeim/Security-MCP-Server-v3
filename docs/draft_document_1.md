@@ -1,8 +1,4 @@
-MCP Server Architecture & Tool Development Guide
-I'll create two comprehensive understanding documents based on my deep analysis of the codebase.
-
-Markdown
-
+```Markdown
 # MCP Server Architecture Design Guide
 
 ## Table of Contents
@@ -1343,8 +1339,8 @@ Set up monitoring and alerts for production deployment
 Document Version: 1.0
 Last Updated: 2024
 Maintainer: MCP Server Team
-
-text
+```
+End of first document
 
 
 ---
