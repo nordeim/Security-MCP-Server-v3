@@ -1,0 +1,422 @@
+#==============================================================================
+# Docker Build Context Exclusions
+#==============================================================================
+# Purpose: Optimize Docker build context and image size
+#
+# Benefits:
+#   - Faster builds (smaller context)
+#   - Smaller images (excluded from COPY)
+#   - Better security (no sensitive files)
+#   - Cleaner builds (no temporary files)
+#
+# Author: MCP Network Tools Team
+# Version: 2.0.0
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# Python
+#------------------------------------------------------------------------------
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# poetry
+poetry.lock
+
+# pdm
+.pdm.toml
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+#------------------------------------------------------------------------------
+# IDEs and Editors
+#------------------------------------------------------------------------------
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Atom
+.atom/
+
+#------------------------------------------------------------------------------
+# Operating Systems
+#------------------------------------------------------------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+#------------------------------------------------------------------------------
+# Version Control
+#------------------------------------------------------------------------------
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# SVN
+.svn/
+
+# Mercurial
+.hg/
+.hgignore
+.hgtags
+
+#------------------------------------------------------------------------------
+# CI/CD
+#------------------------------------------------------------------------------
+
+# GitHub Actions
+.github/
+
+# GitLab CI
+.gitlab-ci.yml
+
+# Jenkins
+Jenkinsfile
+
+# CircleCI
+.circleci/
+
+# Travis CI
+.travis.yml
+
+#------------------------------------------------------------------------------
+# Docker
+#------------------------------------------------------------------------------
+
+# Docker files (don't include in context recursively)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Docker volumes and data
+data/
+volumes/
+
+#------------------------------------------------------------------------------
+# Logs and Temporary Files
+#------------------------------------------------------------------------------
+
+# Logs
+logs/
+*.log
+*.log.*
+*.out
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# OS temp files
+.DS_Store
+Thumbs.db
+
+#------------------------------------------------------------------------------
+# Project-Specific
+#------------------------------------------------------------------------------
+
+# Documentation
+docs/
+*.md
+!README.md  # Include README in image
+LICENSE
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Configuration (use environment variables instead)
+config/*.local.yml
+config/*.local.yaml
+config/*.local.json
+*.secret.*
+.env.*
+
+# Test files
+tests/
+test_*.py
+*_test.py
+*.test.py
+
+# Scripts (include only necessary ones)
+scripts/
+*.sh
+!docker/*.sh  # Include Docker scripts
+
+# Development tools
+.editorconfig
+.prettierrc
+.eslintrc
+.pylintrc
+pyrightconfig.json
+setup.cfg
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Media and large files
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.pdf
+*.mp4
+*.avi
+*.mov
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Node modules (if any frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Go (if any Go tools)
+vendor/
+go.sum
+
+# Rust (if any Rust tools)
+target/
+Cargo.lock
+
+#------------------------------------------------------------------------------
+# Security and Secrets
+#------------------------------------------------------------------------------
+
+# Secrets and credentials
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+secrets/
+.secrets/
+credentials/
+.aws/
+.ssh/
+
+# API keys and tokens
+.env
+.env.local
+.env.production
+.env.development
+*.env
+
+#------------------------------------------------------------------------------
+# Monitoring and Profiling
+#------------------------------------------------------------------------------
+
+# Profiling data
+*.prof
+*.pprof
+*.trace
+
+# Monitoring data
+prometheus/
+grafana/
+
+#==============================================================================
+# Notes
+#==============================================================================
+#
+# Build Context Optimization:
+#   - Exclude everything not needed for the build
+#   - Reduces context upload time
+#   - Speeds up builds significantly
+#
+# Security:
+#   - No secrets or credentials in image
+#   - No sensitive configuration files
+#   - No development tools in production image
+#
+# Image Size:
+#   - Smaller context = faster builds
+#   - Excluded files don't increase image size
+#   - Better layer caching
+#
+# Maintenance:
+#   - Keep this file updated
+#   - Review periodically
+#   - Document exceptions with comments
+#
+#==============================================================================

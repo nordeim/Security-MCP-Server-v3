@@ -1,0 +1,165 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/mcp.json",
+  "version": "1.0.0",
+  "mcpServers": {
+    "network-tools": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_server.server"
+      ],
+      "env": {
+        "MCP_SERVER_TRANSPORT": "stdio",
+        "LOG_LEVEL": "INFO",
+        "MCP_SECURITY_ALLOW_INTRUSIVE": "false",
+        "MCP_CIRCUIT_BREAKER_FAILURE_THRESHOLD": "5",
+        "MCP_CIRCUIT_BREAKER_RECOVERY_TIMEOUT": "60",
+        "MCP_TOOL_DEFAULT_TIMEOUT": "300",
+        "MCP_TOOL_DEFAULT_CONCURRENCY": "2"
+      },
+      "metadata": {
+        "name": "MCP Network Tools Server",
+        "version": "2.0.0",
+        "description": "Production-ready MCP server for network security tools (nmap, etc.) with circuit breaker, metrics, and comprehensive safety controls",
+        "author": "MCP Network Tools Team",
+        "license": "MIT",
+        "repository": "https://github.com/your-org/mcp-network-tools"
+      },
+      "capabilities": {
+        "tools": true,
+        "resources": false,
+        "prompts": false,
+        "logging": true
+      },
+      "tools": [
+        {
+          "name": "NmapTool",
+          "description": "Network scanner with security controls and policy enforcement. Supports host discovery, port scanning, service detection, and safe script execution.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": "string",
+                "description": "Target host or network (RFC1918 private IPs or *.lab.internal domains only)",
+                "pattern": "^(10\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.|127\\.|.*\\.lab\\.internal).*$",
+                "examples": [
+                  "192.168.1.0/24",
+                  "10.0.0.1",
+                  "server.lab.internal"
+                ]
+              },
+              "extra_args": {
+                "type": "string",
+                "description": "Additional nmap arguments (whitelist-validated)",
+                "default": "",
+                "maxLength": 2048,
+                "examples": [
+                  "-sV --top-ports 1000",
+                  "-sC -p 80,443",
+                  "--script safe -T4"
+                ]
+              },
+              "timeout_sec": {
+                "type": "number",
+                "description": "Timeout in seconds",
+                "minimum": 1,
+                "maximum": 3600,
+                "default": 300
+              },
+              "correlation_id": {
+                "type": "string",
+                "description": "Optional correlation ID for tracking",
+                "maxLength": 64
+              }
+            },
+            "required": ["target"],
+            "additionalProperties": false
+          },
+          "safety": {
+            "target_restrictions": "RFC1918 private IPs and .lab.internal domains only",
+            "intrusive_operations": "Controlled by MCP_SECURITY_ALLOW_INTRUSIVE flag",
+            "script_filtering": "Safe scripts always allowed, intrusive scripts require policy",
+            "network_limits": "Maximum 1024 hosts per scan",
+            "resource_limits": "CPU, memory, and timeout enforced"
+          }
+        }
+      ],
+      "configuration": {
+        "stdio": {
+          "description": "Standard input/output transport (recommended for Claude Desktop)",
+          "env": {
+            "MCP_SERVER_TRANSPORT": "stdio"
+          }
+        },
+        "http": {
+          "description": "HTTP/REST API transport with SSE events",
+          "env": {
+            "MCP_SERVER_TRANSPORT": "http",
+            "MCP_SERVER_HOST": "0.0.0.0",
+            "MCP_SERVER_PORT": "8080"
+          },
+          "endpoints": {
+            "health": "GET /health",
+            "tools": "GET /tools",
+            "execute": "POST /tools/{tool_name}/execute",
+            "metrics": "GET /metrics",
+            "events": "GET /events (SSE)"
+          }
+        }
+      },
+      "security": {
+        "network_restrictions": {
+          "allowed_targets": [
+            "RFC1918 private IP addresses",
+            "*.lab.internal domains"
+          ],
+          "blocked_targets": [
+            "Public IP addresses",
+            "External domains"
+          ]
+        },
+        "command_injection_prevention": {
+          "shell_metacharacters": "Blocked (;&|`$><\\n\\r)",
+          "flag_validation": "Whitelist-based",
+          "argument_sanitization": "Strict token validation"
+        },
+        "resource_limits": {
+          "max_memory_mb": 512,
+          "max_file_descriptors": 256,
+          "max_stdout_bytes": 1048576,
+          "max_stderr_bytes": 262144
+        }
+      },
+      "monitoring": {
+        "health_checks": {
+          "system_resources": "CPU, memory, disk usage",
+          "process_health": "Process running status",
+          "tool_availability": "Tool command availability",
+          "circuit_breakers": "Circuit breaker states"
+        },
+        "metrics": {
+          "prometheus": "Exposed at /metrics endpoint (HTTP mode)",
+          "tool_execution": "Success rate, latency, error types",
+          "system": "Uptime, request count, error rate"
+        }
+      }
+    }
+  },
+  "defaults": {
+    "timeout": 300,
+    "retries": 3,
+    "logging": {
+      "level": "INFO",
+      "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    }
+  },
+  "comments": {
+    "usage": "This MCP configuration file is consumed by AI agents (like Claude) to understand server capabilities and invoke tools safely.",
+    "transport_stdio": "Use stdio transport for Claude Desktop integration - it's the recommended mode for AI agent consumption.",
+    "transport_http": "Use HTTP transport for web applications, monitoring dashboards, or distributed deployments.",
+    "security_note": "All tools enforce strict security controls. Public IPs and external targets are blocked by default.",
+    "intrusive_operations": "Set MCP_SECURITY_ALLOW_INTRUSIVE=true to enable intrusive nmap scans (-A flag, vulnerability scripts). Use with caution.",
+    "customization": "Override any env variable in the 'env' section to customize behavior.",
+    "launcher_script": "For production deployments, use scripts/mcp_server_launcher.sh instead of direct python invocation."
+  }
+}
