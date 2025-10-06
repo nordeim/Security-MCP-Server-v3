@@ -242,8 +242,7 @@ class MasscanTool(MCPBaseTool):
     )
     
     _JSON_PORT_PATTERN = re.compile(
-        r'"ip":\s*"(?P<ip>[^"]+)".*?"ports":\s*```math
-.*?"port":\s*(?P<port>\d+).*?"proto":\s*"(?P<proto>\w+)"'
+        r'"ip":\s*"(?P<ip>[^"]+)".*?"ports":\s*\[.*?"port":\s*(?P<port>\d+).*?"proto":\s*"(?P<proto>\w+)"'
     )
     
     _LIST_PORT_PATTERN = re.compile(
@@ -251,8 +250,7 @@ class MasscanTool(MCPBaseTool):
     )
     
     _BANNER_PATTERN = re.compile(
-        r'Banner on port (?P<port>\d+)/(?P<proto>tcp|udp) on (?P<ip>[\d.]+):\s*```math
-(?P<banner>[^```]+)```'
+        r'Banner on port (?P<port>\d+)/(?P<proto>tcp|udp) on (?P<ip>[\d.]+):\s*\[(?P<banner>[^\]]+)\]'
     )
     
     def __init__(self):
