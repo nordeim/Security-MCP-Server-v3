@@ -1,6 +1,6 @@
 # MCP Server Tool Development Programming Guide
 
-**Version:** 3.0  
+**Version:** 1.0  
 **Purpose:** Definitive guide for developing new tools for the Enhanced MCP Server
 
 ---
