@@ -205,15 +205,13 @@ class GobusterTool(MCPBaseTool):
     
     # Compiled patterns for parsing
     _DIR_RESULT_PATTERN = re.compile(
-        r'^(?P<url>\S+)\s+KATEX_INLINE_OPENStatus:\s*(?P<status>\d+)KATEX_INLINE_CLOSE\s*```math
-Size:\s*(?P<size>\d+)```'
+        r'^(?P<url>\S+)\s+\(Status:\s*(?P<status>\d+)\)\s*\[Size:\s*(?P<size>\d+)\]'
     )
     _DNS_RESULT_PATTERN = re.compile(
-        r'^Found:\s*(?P<subdomain>\S+)(?:\s+```math
-(?P<ip>[^```]+)```)?'
+        r'^Found:\s*(?P<subdomain>\S+)(?:\s+\[(?P<ip>[^\]]+)\])?'
     )
     _VHOST_RESULT_PATTERN = re.compile(
-        r'^Found:\s*(?P<vhost>\S+)\s+KATEX_INLINE_OPENStatus:\s*(?P<status>\d+)KATEX_INLINE_CLOSE'
+        r'^Found:\s*(?P<vhost>\S+)\s+\(Status:\s*(?P<status>\d+)\)'
     )
     
     def __init__(self):
