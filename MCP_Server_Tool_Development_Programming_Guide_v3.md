@@ -1106,9 +1106,7 @@ class YourTool(MCPBaseTool):
 
 ```python
 # Pattern 1: Simple whitelist
-allowed_flags = ["-v", "-q", "-
-```markdown
-c"]
+allowed_flags = ["-v", "-q", "-c"]
 
 # Pattern 2: With value flags
 allowed_flags = [
